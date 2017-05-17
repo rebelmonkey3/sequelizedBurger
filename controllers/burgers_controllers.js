@@ -1,39 +1,78 @@
 var express = require('express');
 var router = express.Router();
-var burger = require('../models/burger.js');
-
-
-router.get('/', function (req, res) {
-  res.redirect('/index');
-});
+var models = require('../models');
 
 
 
-router.get('/index', function (req, res) {
-  burger.selectAll(function(data) {
-    var hbsObject = { burgers: data };
+var sequelizeConnection = models.sequelize;
 
 
-    res.render('index', hbsObject);
-  });
-});
+sequelizeConnection.sync();
 
-
-
-router.post('/burger/create', function (req, res) {
-  burger.insertOne(req.body.burger_name, function() {
+router.get('/', function(req, res) {
     res.redirect('/index');
-  });
+});
+
+
+router.get('/index', function(req, res) {
+
+
+    models.burgers.findAll({
+        include: [{ model: models.devourers }]
+    }).then(function(data) {
+
+        var hbsObject = { burgers: data };
+        res.render('index', hbsObject);
+
+    })
+
+});
+
+
+router.post('/burger/create', function(req, res) {
+
+    models.burgers.create({
+        burger_name: req.body.burger_name,
+        devoured: false
+    }).then(function() {
+        res.redirect('/index');
+    });
+
 });
 
 
 
+router.post('/burger/eat/:id', function(req, res) {
 
-router.post('/burger/eat/:id', function (req, res) {
-  burger.updateOne(req.params.id, function() {
-    res.redirect('/index');
-  });
+    if (req.body.burgerEater == "" || req.body.burgerEater == null) {
+        req.body.burgerEater = "Anonymous";
+    }
+
+
+    devourer_name: req.body.burgerEater,
+        burgerId: req.params.id
+})
+
+
+.then(function(newDevourer) {
+
+    models.burgers.findOne({ where: { id: req.params.id } })
+
+
+    .then(function(eatenBurger) {
+
+        eatenBurger.update({
+            devoured: true,
+        })
+
+        .then(function() {
+            res.redirect('/index');
+        });
+
+    });
+
 });
 
+};
 
 module.exports = router;
